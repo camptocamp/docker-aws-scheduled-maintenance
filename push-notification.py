@@ -27,7 +27,9 @@ scheduled_retire   = Counter('aws_scheduled_retire', 'AWS scheduled retirements'
 impaired_systems   = Counter('aws_impaired_systems', 'AWS running systems with bad state', registry=registry)
 impaired_instances = Counter('aws_impaired_instances', 'AWS running instances with bad state', registry=registry)
 
-for status in ec2_client.describe_instance_status(IncludeAllInstances=True)['InstanceStatuses']:
+events = ec2_client.describe_instance_status(IncludeAllInstances=True)['InstanceStatuses']
+print('[I] %i instances'%len(events))
+for status in events:
     if 'Events' in status:
         print('[I] Found: scheduled maintenance')
         if any('stop' in s['Code'] for s in status['Events']) or any('retire' in s['Code'] for s in status['Events']):
@@ -45,6 +47,7 @@ for status in ec2_client.describe_instance_status(IncludeAllInstances=True)['Ins
             print('[I] Found: impaired instance')
 
 try:
+    print('[I] Pushing to prometheus')
     push_to_gateway('pushgateway.metrics:9091', job='AWS_States', registry=registry)
 except urllib.error.URLError:
     print('[C] Unable to push to Prometheus')
