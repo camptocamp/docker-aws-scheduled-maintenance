@@ -49,7 +49,7 @@ for status in events:
             print('[I]  Is a reboot (%s)'%status['InstanceId'])
             ec2_events.labels(status['InstanceId'], 'reboot').inc()
         else:
-            print(status['Events'])
+            print('[W] %s'%status['Events'])
     if status['InstanceState']['Name'] == 'running':
         if status['SystemStatus']['Status'] == 'impaired':
             ec2_events.labels(status['InstanceId'], 'system_impaired').inc()
@@ -61,6 +61,11 @@ for status in events:
 print('[I] RDS events')
 rds_client = session.client('rds')
 rds_events = Counter('aws_rds_events', 'Events on AWS RDS service', ['dbname', 'event_code'], registry=registry)
+rds_db_instances = Counter('aws_rds_db_instances', 'Amount of db_instances', registry=registry)
+
+db_instances = len(rds_client.describe_db_instances()['DBInstances']);
+rds_db_instances.inc(db_instances)
+
 yesterday = datetime.date.today () - datetime.timedelta (days=1)
 events = rds_client.describe_events(
     StartTime=yesterday.strftime('%Y-%m-%dT%H:%M%Z'),
