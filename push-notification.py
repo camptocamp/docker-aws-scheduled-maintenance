@@ -2,6 +2,7 @@
 from prometheus_client import CollectorRegistry, Counter, push_to_gateway
 import boto3
 import botocore.exceptions
+import datetime
 import os
 import sys
 import urllib.error
@@ -55,6 +56,27 @@ for status in events:
         if status['InstanceStatus']['Status'] == 'impaired':
             ec2_events.labels(status['InstanceId'], 'instance_impaired').inc()
             print('[I] Found: impaired instance')
+
+print('[I] RDS events')
+rds_client = session.client('rds')
+rds_events = Counter('aws_rds_events', 'Events on AWS RDS service', ['dbname', 'event_code'], registry=registry)
+yesterday = datetime.date.today () - datetime.timedelta (days=1)
+events = rds_client.describe_events(
+    StartTime=yesterday.strftime('%Y-%m-%dT%H:%M%Z'),
+    )
+
+for event in events['Events']:
+    if 'backup' in event['EventCategories']:
+        print('[I] Backup for %s'%event['SourceIdentifier'])
+        if event['Message'] == 'Backing up DB instance':
+            rds_events.labels(event['SourceIdentifier'], 'start_backup').inc()
+            print('[I]   Started')
+        elif event['Message'] == 'Finished DB Instance backup':
+            rds_events.labels(event['SourceIdentifier'], 'finish_backup').inc()
+            print('[I]   Finished')
+        else:
+            rds_events.labels(event['SourceIdentifier'], 'unknown_backup').inc()
+            print('[W]  %s'%event['Message'])
 
 try:
     print('[I] Pushing to prometheus')
