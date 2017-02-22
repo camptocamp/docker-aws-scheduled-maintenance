@@ -8,6 +8,7 @@ import sys
 import urllib.error
 
 registry = CollectorRegistry()
+push_gw = 'pushgateway.metrics:9091'
 
 if len(sys.argv) == 2:
     print('[I] Using profile %s'%sys.argv[1])
@@ -26,7 +27,7 @@ if not session.region_name:
     error.inc()
     try:
         print('[I] Pushing to prometheus')
-        push_to_gateway('pushgateway.metrics:9091', job='AWS_States', registry=registry)
+        push_to_gateway(push_gw, job='AWS_States', registry=registry)
     except urllib.error.URLError:
         print('[C] Unable to push to Prometheus')
     sys.exit(1)
@@ -80,7 +81,7 @@ for event in events['Events']:
 
 try:
     print('[I] Pushing to prometheus')
-    push_to_gateway('pushgateway.metrics:9091', job='AWS_States', registry=registry)
+    push_to_gateway(push_gw, job='AWS_States', registry=registry)
 except urllib.error.URLError:
     print('[C] Unable to push to Prometheus')
 
